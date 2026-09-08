@@ -118,19 +118,48 @@
     position: relative; border: 1px solid var(--line);
     background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 32px,
                 linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 32px 100%, #eef0ee;
-    background-size: 32px 32px; min-height: 320px; cursor: pointer; overflow: hidden;
+    background-size: 32px 32px;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    cursor: pointer; overflow: hidden;
   }
-  .arn-corner { position: absolute; width: 22px; height: 22px; border-color: var(--accent); border-style: solid; z-index: 2; }
+  .arn-corner { position: absolute; width: 22px; height: 22px; border-color: var(--accent); border-style: solid; z-index: 2; pointer-events: none; }
   .arn-corner.tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
   .arn-corner.bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
-  .arn-photo-caption { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--ink-soft); width: 80%; }
+  .arn-photo-caption { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--ink-soft); width: 80%; pointer-events: none; }
   .arn-photo-caption .arn-sub { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 3px; margin-bottom: 6px; }
   .arn-photo-caption .arn-click { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: 5px; color: #6b6e6a; }
   .arn-photo-caption .arn-hint { font-size: 12px; margin-top: 8px; color: var(--ink-soft); }
-  .arn-photo-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
-  .arn-photo-frame.has-image img { display: block; }
+  .arn-photo-imgwrap { position: absolute; inset: 0; overflow: hidden; display: none; }
+  .arn-photo-frame.has-image .arn-photo-imgwrap { display: block; }
   .arn-photo-frame.has-image .arn-photo-caption.arn-upload-caption { display: none; }
-  .arn-stamp { position: absolute; bottom: 42px; right: 14px; border: 2px solid var(--accent); color: var(--accent); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; letter-spacing: 2px; padding: 3px 10px; transform: rotate(-6deg); opacity: 0.85; z-index: 2; }
+  .arn-photo-frame img {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: cover; transform-origin: center center;
+    cursor: grab; touch-action: none; user-select: none;
+  }
+  .arn-photo-frame img.dragging { cursor: grabbing; }
+  .arn-photo-controls {
+    display: none;
+    align-items: center; gap: 10px;
+    max-width: 420px; margin: 12px auto 0;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .arn-photo-controls.visible { display: flex; }
+  .arn-zoom-label { font-family: 'Space Mono', monospace; font-size: 10.5px; white-space: nowrap; }
+  #photo-zoom { flex: 1; }
+  #btn-photo-reset-pos {
+    background: none; border: 1px dashed var(--ink-soft); color: var(--ink-soft);
+    font-size: 11px; padding: 4px 9px; border-radius: 3px; cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .arn-photo-hint {
+    display: none;
+    text-align: center; font-size: 11px; color: var(--ink-soft); margin-top: 6px;
+  }
+  .arn-photo-hint.visible { display: block; }
+  .arn-stamp { position: absolute; bottom: 42px; right: 14px; border: 2px solid var(--accent); color: var(--accent); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; letter-spacing: 2px; padding: 3px 10px; transform: rotate(-6deg); opacity: 0.85; z-index: 2; pointer-events: none; }
   .arn-stamp small { display: block; text-align: right; font-size: 9px; letter-spacing: 3px; margin-top: 1px; }
   .arn-frame-labels { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-soft); padding-top: 8px; }
   #photo-input { display: none; }
@@ -166,6 +195,26 @@
   .arn-log-del { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 13px; }
 
   .arn-footer { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 10.5px; letter-spacing: 2px; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 44px; }
+
+  /* 동적 커스텀 섹션 (선관/커스텀 항목 등) */
+  .arn-custom-section { margin-bottom: 34px; position: relative; }
+  .arn-custom-section-title {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 16px; font-weight: 700;
+    padding-bottom: 8px; border-bottom: 1px dashed var(--line); margin-bottom: 14px;
+  }
+  .arn-custom-section-title .arn-diamond { color: var(--accent); font-size: 12px; }
+  .arn-custom-section-title [contenteditable] { flex: 1; }
+  .arn-custom-del {
+    background: none; border: none; color: var(--ink-soft); cursor: pointer;
+    font-size: 13px; padding: 2px 4px;
+  }
+  .arn-add-section-row { text-align: center; margin-bottom: 34px; }
+  #btn-add-custom-section {
+    background: none; border: 1px dashed var(--ink-soft); color: var(--ink-soft);
+    font-size: 12.5px; padding: 7px 16px; border-radius: 3px; cursor: pointer; font-family: inherit;
+  }
+  #btn-add-custom-section:hover { background: rgba(138,59,59,0.06); border-color: var(--accent); color: var(--accent); }
 
   @media (max-width: 640px) {
     .arn-wrap { padding: 28px 18px 40px; }
@@ -260,8 +309,8 @@
     <div class="arn-info-row">
       성별 <b contenteditable="true" data-key="gender" data-placeholder="성별">성별</b><span class="arn-sep">·</span>
       나이 <b contenteditable="true" data-key="age" data-placeholder="나이">나이</b><span class="arn-sep">·</span>
-      신장 / 체중 <b contenteditable="true" data-key="size" data-placeholder="신장 / 체중">신장 / 체중</b><span class="arn-sep">·</span>
-      커스텀 항목 <b contenteditable="true" data-key="infoCustom" data-placeholder="자유롭게 추가">자유 항목</b>
+      신장 <b contenteditable="true" data-key="size" data-placeholder="신장">신장</b><span class="arn-sep">·</span>
+      <b contenteditable="true" data-key="infoCustomLabel" data-placeholder="커스텀 항목">커스텀 항목</b> <b contenteditable="true" data-key="infoCustom" data-placeholder="자유롭게 추가">자유 항목</b>
     </div>
   </div>
 
@@ -273,7 +322,9 @@
         <span class="arn-corner tl"></span>
         <span class="arn-corner bl"></span>
         <button class="arn-photo-remove" id="photo-remove" type="button">사진 제거</button>
-        <img id="photo-img" src="" alt="외관 이미지">
+        <div class="arn-photo-imgwrap" id="photo-imgwrap">
+          <img id="photo-img" src="" alt="외관 이미지" draggable="false">
+        </div>
         <div class="arn-photo-caption arn-upload-caption">
           <div class="arn-sub">SUBJECT IMAGE</div>
           <div class="arn-click">CLICK HERE</div>
@@ -282,6 +333,15 @@
         <div class="arn-stamp">CONTROLLED<small>ORIGINAL</small></div>
       </div>
       <input type="file" id="photo-input" accept="image/*">
+
+      <div class="arn-photo-controls" id="photo-controls">
+        <span class="arn-zoom-label">축소</span>
+        <input type="range" id="photo-zoom" min="1" max="3" step="0.02" value="1">
+        <span class="arn-zoom-label">확대</span>
+        <button id="btn-photo-reset-pos" type="button">위치 초기화</button>
+      </div>
+      <div class="arn-photo-hint" id="photo-drag-hint">이미지를 드래그하면 위치를 옮길 수 있어요</div>
+
       <div class="arn-frame-labels">
         <span>CAM-03</span>
         <span>FRAME 03</span>
@@ -340,14 +400,9 @@
     </div>
   </div>
 
-  <div class="arn-section">
-    <div class="arn-section-title"><span class="arn-diamond">◈</span> 선관</div>
-    <p class="arn-body-text" contenteditable="true" data-key="conduct" data-placeholder="선관 내용을 입력하세요">이곳에 내용이 들어갑니다.</p>
-  </div>
-
-  <div class="arn-section">
-    <div class="arn-section-title"><span class="arn-diamond">◈</span> 커스텀 항목</div>
-    <p class="arn-body-text" contenteditable="true" data-key="custom" data-placeholder="자유롭게 항목을 추가하세요">이곳에 내용이 들어갑니다.</p>
+  <div id="custom-sections-list"></div>
+  <div class="arn-add-section-row">
+    <button id="btn-add-custom-section" type="button">+ 항목 추가</button>
   </div>
 
   <div class="arn-footer">
@@ -421,10 +476,18 @@
   const photoImg = document.getElementById('photo-img');
   const photoInput = document.getElementById('photo-input');
   const photoRemove = document.getElementById('photo-remove');
+  const photoZoom = document.getElementById('photo-zoom');
+  const photoControls = document.getElementById('photo-controls');
+  const photoDragHint = document.getElementById('photo-drag-hint');
+  const btnPhotoResetPos = document.getElementById('btn-photo-reset-pos');
   const corruptionBox = document.getElementById('corruption-box');
+  const customSectionsList = document.getElementById('custom-sections-list');
 
   let logCounter = 0;
+  let customSectionCounter = 0;
   let saveTimer = null;
+  let photoOffsetX = 0;
+  let photoOffsetY = 0;
 
   // ---------- 관찰 기록 행 생성 ----------
   function createLogRow(data) {
@@ -471,8 +534,28 @@
     scheduleSave();
   });
 
-  // ---------- 사진 업로드 ----------
+  // ---------- 사진 업로드 / 확대·축소 / 드래그 위치 조절 ----------
+  function applyPhotoTransform() {
+    const zoom = parseFloat(photoZoom.value) || 1;
+    photoImg.style.transform = 'scale(' + zoom + ') translate(' + photoOffsetX + 'px, ' + photoOffsetY + 'px)';
+  }
+  function resetPhotoPosition() {
+    photoOffsetX = 0;
+    photoOffsetY = 0;
+    photoZoom.value = 1;
+    applyPhotoTransform();
+  }
+  function showPhotoControls() {
+    photoControls.classList.add('visible');
+    photoDragHint.classList.add('visible');
+  }
+  function hidePhotoControls() {
+    photoControls.classList.remove('visible');
+    photoDragHint.classList.remove('visible');
+  }
+
   photoFrame.addEventListener('click', function (e) {
+    if (photoFrame.classList.contains('has-image')) return; // 이미지가 있으면 드래그로만 조작, 클릭으로 재업로드 안 함
     if (e.target.closest('.arn-photo-remove')) return;
     photoInput.click();
   });
@@ -483,6 +566,8 @@
     reader.onload = function () {
       photoImg.src = reader.result;
       photoFrame.classList.add('has-image');
+      resetPhotoPosition();
+      showPhotoControls();
       scheduleSave();
     };
     reader.readAsDataURL(file);
@@ -492,17 +577,100 @@
     photoImg.src = '';
     photoFrame.classList.remove('has-image');
     photoInput.value = '';
+    resetPhotoPosition();
+    hidePhotoControls();
     scheduleSave();
   });
+  photoZoom.addEventListener('input', function () {
+    applyPhotoTransform();
+    scheduleSave();
+  });
+  btnPhotoResetPos.addEventListener('click', function () {
+    resetPhotoPosition();
+    scheduleSave();
+  });
+
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  photoImg.addEventListener('pointerdown', function (e) {
+    if (!photoFrame.classList.contains('has-image')) return;
+    dragging = true;
+    photoImg.classList.add('dragging');
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    photoImg.setPointerCapture(e.pointerId);
+  });
+  photoImg.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    const zoom = parseFloat(photoZoom.value) || 1;
+    photoOffsetX += dx / zoom;
+    photoOffsetY += dy / zoom;
+    applyPhotoTransform();
+  });
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    photoImg.classList.remove('dragging');
+    scheduleSave();
+  }
+  photoImg.addEventListener('pointerup', endDrag);
+  photoImg.addEventListener('pointercancel', endDrag);
+  photoImg.addEventListener('pointerleave', function () { if (dragging) endDrag(); });
 
   // ---------- 오염 기록 토글 ----------
   document.getElementById('btn-toggle-corruption').addEventListener('click', function () {
     corruptionBox.classList.toggle('open');
   });
 
+  // ---------- 커스텀 섹션(선관 / 커스텀 항목 등) ----------
+  function createCustomSection(data) {
+    data = data || {};
+    customSectionCounter += 1;
+    const section = document.createElement('div');
+    section.className = 'arn-custom-section';
+    section.innerHTML =
+      '<div class="arn-custom-section-title">' +
+        '<span class="arn-diamond">◈</span>' +
+        '<span contenteditable="true" data-placeholder="항목 제목" class="custom-title">' + (data.title || '새 항목') + '</span>' +
+        '<button class="arn-custom-del" type="button" title="이 항목 삭제">✕</button>' +
+      '</div>' +
+      '<p class="arn-body-text" contenteditable="true" data-placeholder="내용을 입력하세요">' + (data.content || '이곳에 내용이 들어갑니다.') + '</p>';
+    section.querySelector('.arn-custom-del').addEventListener('click', function () {
+      section.remove();
+      scheduleSave();
+    });
+    section.querySelectorAll('[contenteditable]').forEach(function (el) {
+      el.addEventListener('input', scheduleSave);
+    });
+    return section;
+  }
+
+  function addCustomSection(data) {
+    const section = createCustomSection(data);
+    customSectionsList.appendChild(section);
+  }
+
+  document.getElementById('btn-add-custom-section').addEventListener('click', function () {
+    addCustomSection();
+    scheduleSave();
+  });
+
   // ---------- 데이터 수집 / 적용 ----------
   function collectData() {
-    const data = { fields: {}, logs: [], photo: photoFrame.classList.contains('has-image') ? photoImg.src : '' };
+    const data = {
+      fields: {},
+      logs: [],
+      customSections: [],
+      photo: photoFrame.classList.contains('has-image') ? photoImg.src : '',
+      photoZoom: parseFloat(photoZoom.value) || 1,
+      photoOffsetX: photoOffsetX,
+      photoOffsetY: photoOffsetY
+    };
     sheet.querySelectorAll('[data-key]').forEach(function (el) {
       data.fields[el.dataset.key] = el.innerHTML;
     });
@@ -512,6 +680,14 @@
         date: cells[0] ? cells[0].innerHTML : '',
         title: cells[1] ? cells[1].innerHTML : '',
         content: cells[2] ? cells[2].innerHTML : ''
+      });
+    });
+    customSectionsList.querySelectorAll('.arn-custom-section').forEach(function (section) {
+      const titleEl = section.querySelector('.custom-title');
+      const contentEl = section.querySelector('.arn-body-text');
+      data.customSections.push({
+        title: titleEl ? titleEl.innerHTML : '',
+        content: contentEl ? contentEl.innerHTML : ''
       });
     });
     return data;
@@ -532,12 +708,26 @@
     } else {
       addLogRow();
     }
+    customSectionsList.innerHTML = '';
+    customSectionCounter = 0;
+    if (data.customSections && data.customSections.length) {
+      data.customSections.forEach(function (s) { addCustomSection(s); });
+    } else {
+      addCustomSection({ title: '선관', content: '이곳에 내용이 들어갑니다.' });
+      addCustomSection({ title: '커스텀 항목', content: '이곳에 내용이 들어갑니다.' });
+    }
+    photoOffsetX = data.photoOffsetX || 0;
+    photoOffsetY = data.photoOffsetY || 0;
+    photoZoom.value = data.photoZoom || 1;
     if (data.photo) {
       photoImg.src = data.photo;
       photoFrame.classList.add('has-image');
+      showPhotoControls();
+      applyPhotoTransform();
     } else {
       photoImg.src = '';
       photoFrame.classList.remove('has-image');
+      hidePhotoControls();
     }
   }
 
@@ -576,6 +766,8 @@
       }
     }
     addLogRow();
+    addCustomSection({ title: '선관', content: '이곳에 내용이 들어갑니다.' });
+    addCustomSection({ title: '커스텀 항목', content: '이곳에 내용이 들어갑니다.' });
     statusEl.textContent = '새 설정노트';
   }
   loadFromStorage();
@@ -629,7 +821,11 @@
     const clone = sheet.cloneNode(true);
     clone.querySelectorAll('[contenteditable]').forEach(function (el) { el.removeAttribute('contenteditable'); });
     clone.querySelectorAll('.arn-log-del').forEach(function (el) { el.remove(); });
+    clone.querySelectorAll('.arn-custom-del').forEach(function (el) { el.remove(); });
     clone.querySelectorAll('.arn-photo-remove').forEach(function (el) { el.remove(); });
+    clone.querySelectorAll('.arn-photo-controls').forEach(function (el) { el.remove(); });
+    clone.querySelectorAll('.arn-photo-hint').forEach(function (el) { el.remove(); });
+    clone.querySelectorAll('.arn-add-section-row').forEach(function (el) { el.remove(); });
     const corruption = clone.querySelector('#corruption-box');
     if (corruption) corruption.classList.add('open');
     const toggleBtn = clone.querySelector('.arn-reveal-toggle');
