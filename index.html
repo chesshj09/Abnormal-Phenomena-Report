@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>캐릭터 설정노트 에디터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #dfe2df; font-family: 'Noto Sans KR', sans-serif; }
+
+  /* ---------- 상단 툴바 (편집기 전용, 내보낸 HTML엔 포함 안 됨) ---------- */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #232322;
+    color: #eee;
+    font-size: 13px;
+  }
+  .toolbar b { color: #c9a86b; }
+  .toolbar-spacer { flex: 1; }
+  .toolbar button, .toolbar label.btn {
+    background: #3a3a37;
+    color: #f2f2f0;
+    border: 1px solid #55564f;
+    border-radius: 4px;
+    padding: 7px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .toolbar button:hover, .toolbar label.btn:hover { background: #4a4a46; }
+  .toolbar button.primary { background: #8a3b3b; border-color: #8a3b3b; }
+  .toolbar button.primary:hover { background: #9c4444; }
+  #save-status { color: #9a9c96; font-size: 11.5px; font-family: 'Space Mono', monospace; }
+  #import-file { display: none; }
+
+  /* ---------- 설정노트 본문 스타일 ---------- */
+  .arn-wrap {
+    --bg: #eceeec;
+    --paper: #f6f7f6;
+    --ink: #232322;
+    --ink-soft: #55564f;
+    --line: #cfd2ce;
+    --accent: #8a3b3b;
+    --accent-soft: #c9a86b;
+    --redact: #1c1c1a;
+
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 44px 60px;
+    background:
+      repeating-linear-gradient(135deg, rgba(0,0,0,0.012) 0px, rgba(0,0,0,0.012) 1px, transparent 1px, transparent 5px),
+      var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  /* 편집 가능한 요소 표시 (편집기 안에서만) */
+  [contenteditable="true"] {
+    outline: none;
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  [contenteditable="true"]:hover { background: rgba(138,59,59,0.06); }
+  [contenteditable="true"]:focus { background: rgba(138,59,59,0.1); box-shadow: 0 0 0 1px var(--accent); }
+  [contenteditable="true"]:empty::before {
+    content: attr(data-placeholder);
+    color: #a9aca6;
+  }
+
+  /* 마스트헤드 */
+  .arn-masthead { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); margin-bottom: 18px; }
+  .arn-sn-badge { border: 1px solid var(--ink); font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; padding: 3px 7px; letter-spacing: 1px; }
+  .arn-masthead-title { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 3px; }
+
+  /* 메타 */
+  .arn-meta { display: flex; flex-wrap: wrap; gap: 22px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-soft); padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 34px; }
+  .arn-meta b { color: var(--ink); font-weight: 700; margin-left: 4px; min-width: 20px; display: inline-block; }
+
+  /* 캐치프레이즈 */
+  .arn-catch { text-align: center; margin-bottom: 14px; }
+  .arn-catch-box { display: inline-block; border: 1px dashed var(--ink-soft); padding: 10px 22px; font-size: 14px; min-width: 200px; }
+  .arn-quote { text-align: center; font-size: 15px; color: var(--ink-soft); margin: 18px 0 6px; min-height: 1.4em; }
+
+  /* 이름 */
+  .arn-name-wrap { text-align: center; margin: 8px 0 4px; }
+  .arn-name-frame { display: inline-block; position: relative; padding: 6px 34px; }
+  .arn-name-frame::before, .arn-name-frame::after { content: ""; position: absolute; width: 14px; height: 14px; border-color: var(--accent); border-style: solid; top: 0; }
+  .arn-name-frame::before { left: 0; border-width: 2px 0 0 2px; }
+  .arn-name-frame::after { right: 0; border-width: 0 2px 2px 0; top: auto; bottom: 0; }
+  .arn-name { font-family: 'Noto Serif KR', serif; font-size: 40px; font-weight: 700; letter-spacing: 2px; min-width: 120px; text-align: center; }
+  .arn-pronounce { text-align: center; font-size: 12px; color: var(--ink-soft); letter-spacing: 2px; margin-bottom: 40px; min-height: 1.2em; }
+
+  /* 섹션 공통 */
+  .arn-section { margin-bottom: 34px; }
+  .arn-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; padding-bottom: 8px; border-bottom: 1px dashed var(--line); margin-bottom: 14px; }
+  .arn-section-title .arn-diamond { color: var(--accent); font-size: 12px; }
+  .arn-body-text { font-size: 14.5px; color: var(--ink); min-height: 1.4em; }
+  .arn-body-text a, .arn-link { color: var(--accent); text-decoration: underline; text-decoration-style: dotted; }
+
+  /* 기본정보 */
+  .arn-info-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 14px; }
+  .arn-info-row span.arn-sep { color: var(--line); margin: 0 4px; }
+  .arn-info-row b { font-weight: 700; min-width: 30px; display: inline-block; }
+
+  /* 외관 */
+  .arn-photo-card { background: var(--paper); border: 1px solid var(--line); border-radius: 2px; padding: 18px 18px 14px; }
+  .arn-photo-tab { width: 70px; height: 8px; background: #dfe2df; margin: -18px auto 14px; border-radius: 0 0 3px 3px; }
+  .arn-photo-frame {
+    position: relative; border: 1px solid var(--line);
+    background: linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 32px,
+                linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 32px 100%, #eef0ee;
+    background-size: 32px 32px; min-height: 320px; cursor: pointer; overflow: hidden;
+  }
+  .arn-corner { position: absolute; width: 22px; height: 22px; border-color: var(--accent); border-style: solid; z-index: 2; }
+  .arn-corner.tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+  .arn-corner.bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+  .arn-photo-caption { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--ink-soft); width: 80%; }
+  .arn-photo-caption .arn-sub { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 3px; margin-bottom: 6px; }
+  .arn-photo-caption .arn-click { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: 5px; color: #6b6e6a; }
+  .arn-photo-caption .arn-hint { font-size: 12px; margin-top: 8px; color: var(--ink-soft); }
+  .arn-photo-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+  .arn-photo-frame.has-image img { display: block; }
+  .arn-photo-frame.has-image .arn-photo-caption.arn-upload-caption { display: none; }
+  .arn-stamp { position: absolute; bottom: 42px; right: 14px; border: 2px solid var(--accent); color: var(--accent); font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; letter-spacing: 2px; padding: 3px 10px; transform: rotate(-6deg); opacity: 0.85; z-index: 2; }
+  .arn-stamp small { display: block; text-align: right; font-size: 9px; letter-spacing: 3px; margin-top: 1px; }
+  .arn-frame-labels { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-soft); padding-top: 8px; }
+  #photo-input { display: none; }
+  .arn-photo-remove { position: absolute; top: 8px; right: 8px; z-index: 3; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 3px; padding: 4px 8px; font-size: 11px; cursor: pointer; display: none; }
+  .arn-photo-frame.has-image .arn-photo-remove { display: block; }
+
+  .arn-reveal-toggle { text-align: center; margin-top: 10px; }
+  .arn-reveal-toggle button { background: none; border: 1px dashed var(--ink-soft); color: var(--ink-soft); font-size: 11.5px; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-family: inherit; }
+  .arn-corruption-box { display: none; margin-top: 14px; padding: 12px 14px; background: #26221f; color: #d8d3c8; border-left: 3px solid var(--accent); font-size: 13.5px; }
+  .arn-corruption-box.open { display: block; }
+
+  .arn-memo { display: flex; gap: 12px; background: #eceeec; border-left: 3px solid var(--accent); padding: 12px 16px; margin-top: 14px; font-size: 13.5px; }
+  .arn-memo .arn-memo-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--ink-soft); white-space: nowrap; letter-spacing: 1px; }
+
+  /* 태그 */
+  .arn-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .arn-tag { border: 1px solid var(--line); border-radius: 3px; padding: 4px 10px; font-size: 12.5px; color: var(--ink-soft); min-width: 40px; }
+
+  /* L / H */
+  .arn-lh-row { display: flex; gap: 16px; margin-top: 18px; }
+  .arn-lh-box { flex: 1; border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--paper); padding: 14px 16px; }
+  .arn-lh-tag { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 13px; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+
+  /* 관찰일지 */
+  .arn-log { border: 1px solid var(--line); background: var(--paper); }
+  .arn-log-head { display: flex; justify-content: space-between; align-items: center; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #fff; background: var(--ink); padding: 6px 14px; }
+  .arn-log-head button { background: var(--accent); color: #fff; border: none; border-radius: 3px; padding: 3px 9px; font-size: 10px; cursor: pointer; letter-spacing: 1px; font-family: inherit; }
+  .arn-log-row { display: flex; gap: 16px; padding: 14px 16px; border-top: 1px solid var(--line); position: relative; }
+  .arn-log-num { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-soft); min-width: 46px; }
+  .arn-log-num b { display: block; font-size: 15px; color: var(--ink); }
+  .arn-log-date { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-soft); margin-bottom: 4px; min-width: 90px; }
+  .arn-log-title { font-weight: 700; margin-bottom: 6px; }
+  .arn-log-del { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 13px; }
+
+  .arn-footer { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 10.5px; letter-spacing: 2px; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 44px; }
+
+  @media (max-width: 640px) {
+    .arn-wrap { padding: 28px 18px 40px; }
+    .arn-name { font-size: 30px; }
+    .arn-lh-row { flex-direction: column; }
+    .toolbar { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <b>캐릭터 설정노트 에디터</b>
+  <span id="save-status">불러오는 중...</span>
+  <div class="toolbar-spacer"></div>
+  <button id="btn-reset">전체 초기화</button>
+  <label class="btn" for="import-file">가져오기</label>
+  <input type="file" id="import-file" accept="application/json">
+  <button id="btn-export">내보내기 (.json)</button>
+  <button id="btn-export-html" class="primary">티스토리 HTML 추출</button>
+</div>
+
+<div class="arn-wrap" id="sheet">
+
+  <div class="arn-masthead">
+    <span class="arn-sn-badge">SN</span>
+    <span class="arn-masthead-title">ANOMALOUS RESEARCH UNIT</span>
+  </div>
+
+  <div class="arn-meta">
+    <span>SUBJECT ID <b contenteditable="true" data-key="subjectId" data-placeholder="SUB-0000-A">SUB-0279-A</b></span>
+    <span>PHASE <b contenteditable="true" data-key="phase" data-placeholder="00">03</b></span>
+    <span>CONDITION <b contenteditable="true" data-key="condition" data-placeholder="CONTROLLED">CONTROLLED</b></span>
+    <span>RISK <b contenteditable="true" data-key="risk" data-placeholder="LEVEL C">LEVEL C</b></span>
+  </div>
+
+  <div class="arn-catch">
+    <div class="arn-catch-box" contenteditable="true" data-key="catchphrase" data-placeholder="캐치프레이즈를 입력하세요">이곳에 캐치프레이즈가 들어갑니다</div>
+  </div>
+  <p class="arn-quote" contenteditable="true" data-key="quote" data-placeholder="짧은 인용구를 입력하세요">“이곳에 짧은 대사가 들어갑니다.”</p>
+
+  <div class="arn-name-wrap">
+    <div class="arn-name-frame">
+      <div class="arn-name" contenteditable="true" data-key="name" data-placeholder="이름">이름</div>
+    </div>
+  </div>
+  <p class="arn-pronounce" contenteditable="true" data-key="pronounce" data-placeholder="이름 발음">이름 발음</p>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 기본 정보</div>
+    <div class="arn-info-row">
+      성별 <b contenteditable="true" data-key="gender" data-placeholder="성별">성별</b><span class="arn-sep">·</span>
+      나이 <b contenteditable="true" data-key="age" data-placeholder="나이">나이</b><span class="arn-sep">·</span>
+      신장 / 체중 <b contenteditable="true" data-key="size" data-placeholder="신장 / 체중">신장 / 체중</b><span class="arn-sep">·</span>
+      커스텀 항목 <b contenteditable="true" data-key="infoCustom" data-placeholder="자유롭게 추가">자유 항목</b>
+    </div>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 외관</div>
+    <div class="arn-photo-card">
+      <div class="arn-photo-tab"></div>
+      <div class="arn-photo-frame" id="photo-frame">
+        <span class="arn-corner tl"></span>
+        <span class="arn-corner bl"></span>
+        <button class="arn-photo-remove" id="photo-remove" type="button">사진 제거</button>
+        <img id="photo-img" src="" alt="외관 이미지">
+        <div class="arn-photo-caption arn-upload-caption">
+          <div class="arn-sub">SUBJECT IMAGE</div>
+          <div class="arn-click">CLICK HERE</div>
+          <div class="arn-hint">클릭해서 이미지를 업로드하세요</div>
+        </div>
+        <div class="arn-stamp">CONTROLLED<small>ORIGINAL</small></div>
+      </div>
+      <input type="file" id="photo-input" accept="image/*">
+      <div class="arn-frame-labels">
+        <span>CAM-03</span>
+        <span>FRAME 03</span>
+      </div>
+      <div class="arn-reveal-toggle">
+        <button id="btn-toggle-corruption" type="button">오염 기록 보기 / 숨기기</button>
+      </div>
+      <div class="arn-corruption-box" id="corruption-box" contenteditable="true" data-key="corruption" data-placeholder="오염된 외관 묘사를 입력하세요">이곳에 오염된 외관 묘사가 들어갑니다.</div>
+    </div>
+
+    <div class="arn-memo">
+      <span class="arn-memo-label">researcher memo /</span>
+      <span class="arn-body-text" contenteditable="true" data-key="memo" data-placeholder="연구원 메모">이곳에 메모가 들어갑니다.</span>
+    </div>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 성격</div>
+    <div class="arn-tags">
+      <span class="arn-tag" contenteditable="true" data-key="tag1" data-placeholder="#태그1">#태그1</span>
+      <span class="arn-tag" contenteditable="true" data-key="tag2" data-placeholder="#태그2">#태그2</span>
+      <span class="arn-tag" contenteditable="true" data-key="tag3" data-placeholder="#태그3">#태그3</span>
+    </div>
+    <p class="arn-body-text" contenteditable="true" data-key="personality" data-placeholder="성격 설명을 입력하세요">이곳에 성격 설명이 들어갑니다.</p>
+
+    <div class="arn-lh-row">
+      <div class="arn-lh-box">
+        <div class="arn-lh-tag">L</div>
+        <p class="arn-body-text" contenteditable="true" data-key="lhL" data-placeholder="Low 상태 설명">이곳에 내용이 들어갑니다.</p>
+      </div>
+      <div class="arn-lh-box">
+        <div class="arn-lh-tag">H</div>
+        <p class="arn-body-text" contenteditable="true" data-key="lhH" data-placeholder="High 상태 설명">이곳에 내용이 들어갑니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 소지품</div>
+    <p class="arn-body-text" contenteditable="true" data-key="items" data-placeholder="소지품을 입력하세요">이곳에 소지품이 들어갑니다.</p>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 특징</div>
+    <p class="arn-body-text" contenteditable="true" data-key="traits" data-placeholder="특징을 입력하세요">이곳에 특징이 들어갑니다.</p>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 실험체 관찰일지</div>
+    <div class="arn-log">
+      <div class="arn-log-head">
+        <span>OBSERVATION LOG</span>
+        <button id="btn-add-log" type="button">+ 기록 추가</button>
+      </div>
+      <div id="log-list"></div>
+    </div>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 선관</div>
+    <p class="arn-body-text" contenteditable="true" data-key="conduct" data-placeholder="선관 내용을 입력하세요">이곳에 내용이 들어갑니다.</p>
+  </div>
+
+  <div class="arn-section">
+    <div class="arn-section-title"><span class="arn-diamond">◈</span> 커스텀 항목</div>
+    <p class="arn-body-text" contenteditable="true" data-key="custom" data-placeholder="자유롭게 항목을 추가하세요">이곳에 내용이 들어갑니다.</p>
+  </div>
+
+  <div class="arn-footer">
+    <span>SEOLJEONGNOTE</span>
+    <span>01</span>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'arn_character_sheet_v1';
+  const sheet = document.getElementById('sheet');
+  const statusEl = document.getElementById('save-status');
+  const logList = document.getElementById('log-list');
+  const photoFrame = document.getElementById('photo-frame');
+  const photoImg = document.getElementById('photo-img');
+  const photoInput = document.getElementById('photo-input');
+  const photoRemove = document.getElementById('photo-remove');
+  const corruptionBox = document.getElementById('corruption-box');
+
+  let logCounter = 0;
+  let saveTimer = null;
+
+  // ---------- 관찰 기록 행 생성 ----------
+  function createLogRow(data) {
+    data = data || {};
+    logCounter += 1;
+    const id = 'log' + logCounter + '_' + Date.now();
+    const row = document.createElement('div');
+    row.className = 'arn-log-row';
+    row.dataset.logId = id;
+    row.innerHTML =
+      '<button class="arn-log-del" type="button" title="이 기록 삭제">✕</button>' +
+      '<div class="arn-log-num">OBS<b class="log-num-display"></b></div>' +
+      '<div style="flex:1;">' +
+        '<div class="arn-log-date" contenteditable="true" data-placeholder="20XX.00.00">' + (data.date || '20XX.09.03') + '</div>' +
+        '<div class="arn-log-title" contenteditable="true" data-placeholder="관찰 기록 제목">' + (data.title || '관찰 기록 제목') + '</div>' +
+        '<div class="arn-body-text" contenteditable="true" data-placeholder="관찰 내용을 입력하세요">' + (data.content || '이곳에 관찰 내용이 들어갑니다.') + '</div>' +
+      '</div>';
+    row.querySelector('.arn-log-del').addEventListener('click', function () {
+      row.remove();
+      renumberLogs();
+      scheduleSave();
+    });
+    row.querySelectorAll('[contenteditable]').forEach(function (el) {
+      el.addEventListener('input', scheduleSave);
+    });
+    return row;
+  }
+
+  function renumberLogs() {
+    const rows = logList.querySelectorAll('.arn-log-row');
+    rows.forEach(function (row, idx) {
+      row.querySelector('.log-num-display').textContent = String(idx + 1).padStart(2, '0');
+    });
+  }
+
+  function addLogRow(data) {
+    const row = createLogRow(data);
+    logList.appendChild(row);
+    renumberLogs();
+  }
+
+  document.getElementById('btn-add-log').addEventListener('click', function () {
+    addLogRow();
+    scheduleSave();
+  });
+
+  // ---------- 사진 업로드 ----------
+  photoFrame.addEventListener('click', function (e) {
+    if (e.target.closest('.arn-photo-remove')) return;
+    photoInput.click();
+  });
+  photoInput.addEventListener('change', function () {
+    const file = photoInput.files && photoInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      photoImg.src = reader.result;
+      photoFrame.classList.add('has-image');
+      scheduleSave();
+    };
+    reader.readAsDataURL(file);
+  });
+  photoRemove.addEventListener('click', function (e) {
+    e.stopPropagation();
+    photoImg.src = '';
+    photoFrame.classList.remove('has-image');
+    photoInput.value = '';
+    scheduleSave();
+  });
+
+  // ---------- 오염 기록 토글 ----------
+  document.getElementById('btn-toggle-corruption').addEventListener('click', function () {
+    corruptionBox.classList.toggle('open');
+  });
+
+  // ---------- 데이터 수집 / 적용 ----------
+  function collectData() {
+    const data = { fields: {}, logs: [], photo: photoFrame.classList.contains('has-image') ? photoImg.src : '' };
+    sheet.querySelectorAll('[data-key]').forEach(function (el) {
+      data.fields[el.dataset.key] = el.innerHTML;
+    });
+    logList.querySelectorAll('.arn-log-row').forEach(function (row) {
+      const cells = row.querySelectorAll('[contenteditable]');
+      data.logs.push({
+        date: cells[0] ? cells[0].innerHTML : '',
+        title: cells[1] ? cells[1].innerHTML : '',
+        content: cells[2] ? cells[2].innerHTML : ''
+      });
+    });
+    return data;
+  }
+
+  function applyData(data) {
+    if (!data) return;
+    if (data.fields) {
+      Object.keys(data.fields).forEach(function (key) {
+        const el = sheet.querySelector('[data-key="' + key + '"]');
+        if (el) el.innerHTML = data.fields[key];
+      });
+    }
+    logList.innerHTML = '';
+    logCounter = 0;
+    if (data.logs && data.logs.length) {
+      data.logs.forEach(function (log) { addLogRow(log); });
+    } else {
+      addLogRow();
+    }
+    if (data.photo) {
+      photoImg.src = data.photo;
+      photoFrame.classList.add('has-image');
+    } else {
+      photoImg.src = '';
+      photoFrame.classList.remove('has-image');
+    }
+  }
+
+  // ---------- 저장 (localStorage) ----------
+  function saveNow() {
+    try {
+      const data = collectData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      const now = new Date();
+      statusEl.textContent = '자동 저장됨 · ' + now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    } catch (err) {
+      statusEl.textContent = '저장 실패 (용량 초과 가능 - 이미지 용량을 줄여보세요)';
+      console.error(err);
+    }
+  }
+  function scheduleSave() {
+    statusEl.textContent = '입력 중...';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 600);
+  }
+
+  sheet.querySelectorAll('[contenteditable]').forEach(function (el) {
+    el.addEventListener('input', scheduleSave);
+  });
+
+  // ---------- 초기 로드 ----------
+  function loadFromStorage() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        applyData(JSON.parse(raw));
+        statusEl.textContent = '이전에 저장된 내용을 불러왔습니다';
+        return;
+      } catch (err) {
+        console.error('저장된 데이터를 불러오지 못했습니다', err);
+      }
+    }
+    addLogRow();
+    statusEl.textContent = '새 설정노트';
+  }
+  loadFromStorage();
+
+  // ---------- 전체 초기화 ----------
+  document.getElementById('btn-reset').addEventListener('click', function () {
+    if (!confirm('모든 내용을 초기화할까요? 저장된 내용도 함께 삭제됩니다.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  });
+
+  // ---------- 내보내기 (.json) ----------
+  document.getElementById('btn-export').addEventListener('click', function () {
+    const data = collectData();
+    const nameField = sheet.querySelector('[data-key="name"]');
+    const rawName = nameField ? nameField.textContent.trim() : '';
+    const safeName = (rawName || 'character').replace(/[\\/:*?"<>|]/g, '').slice(0, 30);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safeName + '-설정노트.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // ---------- 가져오기 (.json) ----------
+  document.getElementById('import-file').addEventListener('change', function (e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try {
+        const data = JSON.parse(reader.result);
+        applyData(data);
+        saveNow();
+        statusEl.textContent = '파일에서 불러왔습니다';
+      } catch (err) {
+        alert('파일을 읽는 데 실패했습니다. 올바른 .json 파일인지 확인해주세요.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  // ---------- 티스토리용 완성 HTML 추출 ----------
+  document.getElementById('btn-export-html').addEventListener('click', function () {
+    const clone = sheet.cloneNode(true);
+    clone.querySelectorAll('[contenteditable]').forEach(function (el) { el.removeAttribute('contenteditable'); });
+    clone.querySelectorAll('.arn-log-del').forEach(function (el) { el.remove(); });
+    clone.querySelectorAll('.arn-photo-remove').forEach(function (el) { el.remove(); });
+    const corruption = clone.querySelector('#corruption-box');
+    if (corruption) corruption.classList.add('open');
+    const toggleBtn = clone.querySelector('.arn-reveal-toggle');
+    if (toggleBtn) toggleBtn.remove();
+
+    const styleTag = document.querySelector('style').outerHTML;
+    const fontLinks =
+      '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+      '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">';
+
+    const html =
+      '<!-- 티스토리 HTML 편집 모드에 이 코드 전체를 붙여넣으세요 -->\n' +
+      fontLinks + '\n' +
+      styleTag + '\n' +
+      clone.outerHTML;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const nameField = sheet.querySelector('[data-key="name"]');
+    const rawName = nameField ? nameField.textContent.trim() : '';
+    const safeName = (rawName || 'character').replace(/[\\/:*?"<>|]/g, '').slice(0, 30);
+    a.href = url;
+    a.download = safeName + '-tistory.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+
+</body>
+</html>
